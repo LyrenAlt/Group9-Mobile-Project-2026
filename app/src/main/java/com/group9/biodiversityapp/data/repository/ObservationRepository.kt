@@ -1,0 +1,151 @@
+package com.group9.biodiversityapp.data.repository
+
+import com.group9.biodiversityapp.api.LajiApiService
+import com.group9.biodiversityapp.api.model.AreaResponse
+import com.group9.biodiversityapp.api.model.CountResponse
+import com.group9.biodiversityapp.api.model.ObservationResponse
+import com.group9.biodiversityapp.api.model.PagedResponse
+import com.group9.biodiversityapp.data.local.dao.FavoriteDao
+import com.group9.biodiversityapp.data.local.dao.ObservationDao
+import com.group9.biodiversityapp.data.local.entity.FavoriteObservationEntity
+import com.group9.biodiversityapp.data.local.entity.ObservationEntity
+import kotlinx.coroutines.flow.Flow
+
+/**
+ * Repository that mediates between the laji.fi Warehouse API and the local Room cache.
+ *
+ * - Network calls go through [apiService].
+ * - Cached data is read/written through [observationDao].
+ * - Favorites are managed through [favoriteDao].
+ */
+class ObservationRepository(
+    private val apiService: LajiApiService,
+    private val observationDao: ObservationDao,
+    private val favoriteDao: FavoriteDao
+) {
+
+    // ── Remote API calls ────────────────────────────────────────────────
+
+    /** Fetch observations from the warehouse API and cache them locally. */
+    suspend fun fetchObservations(
+        page: Int = 1,
+        pageSize: Int = 25,
+        taxonId: String? = null,
+        time: String? = null,
+        area: String? = null,
+        target: String? = null
+    ): PagedResponse<ObservationResponse> {
+        val response = apiService.getObservations(
+            page = page,
+            pageSize = pageSize,
+            taxonId = taxonId,
+            time = time,
+            area = area,
+            target = target
+        )
+        // Cache results
+        val entities = response.results.mapNotNull { it.toEntity() }
+        observationDao.insertAll(entities)
+        return response
+    }
+
+    /** Get the count of observations matching the given filters. */
+    suspend fun fetchObservationCount(
+        taxonId: String? = null,
+        time: String? = null,
+        area: String? = null,
+        target: String? = null
+    ): CountResponse {
+        return apiService.getObservationCount(
+            taxonId = taxonId,
+            time = time,
+            area = area,
+            target = target
+        )
+    }
+
+    /** Fetch areas from the API. */
+    suspend fun fetchAreas(
+        type: String? = null,
+        lang: String = "en"
+    ): PagedResponse<AreaResponse> {
+        return apiService.getAreas(type = type, lang = lang)
+    }
+
+    // ── Local cache reads ───────────────────────────────────────────────
+
+    /** Observe all cached observations. */
+    fun getCachedObservations(): Flow<List<ObservationEntity>> = observationDao.getAll()
+
+    /** Observe cached observations for a specific taxon. */
+    fun getCachedObservationsByTaxon(taxonId: String): Flow<List<ObservationEntity>> =
+        observationDao.getByTaxonId(taxonId)
+
+    /** Search cached observations by location name. */
+    fun searchCachedByLocation(location: String): Flow<List<ObservationEntity>> =
+        observationDao.searchByLocation(location)
+
+    /** Get a single cached observation by unit ID. */
+    suspend fun getCachedObservationById(unitId: String): ObservationEntity? =
+        observationDao.getById(unitId)
+
+    /** Clear cache entries older than the given timestamp. */
+    suspend fun clearOldCache(olderThanMillis: Long) {
+        observationDao.deleteOlderThan(olderThanMillis)
+    }
+
+    // ── Favorites ───────────────────────────────────────────────────────
+
+    fun getFavoriteObservations(): Flow<List<FavoriteObservationEntity>> =
+        favoriteDao.getAllFavoriteObservations()
+
+    fun isFavorite(unitId: String): Flow<Boolean> = favoriteDao.isObservationFavorite(unitId)
+
+    suspend fun toggleFavorite(observation: ObservationResponse) {
+        val unitId = observation.unit?.unitId ?: return
+        val isFav = favoriteDao.isObservationFavoriteSync(unitId)
+        if (isFav) {
+            favoriteDao.removeFavoriteObservationById(unitId)
+        } else {
+            favoriteDao.addFavoriteObservation(
+                FavoriteObservationEntity(
+                    unitId = unitId,
+                    taxonId = observation.unit.linkings?.taxon?.id,
+                    scientificName = observation.unit.linkings?.taxon?.scientificName,
+                    vernacularName = observation.unit.linkings?.taxon?.getVernacularName(),
+                    municipality = observation.gathering?.municipality,
+                    eventDate = observation.gathering?.eventDate?.begin,
+                    latitude = observation.gathering?.coordinates?.lat,
+                    longitude = observation.gathering?.coordinates?.lon
+                )
+            )
+        }
+    }
+
+    suspend fun addFavorite(entity: FavoriteObservationEntity) =
+        favoriteDao.addFavoriteObservation(entity)
+
+    suspend fun removeFavorite(unitId: String) =
+        favoriteDao.removeFavoriteObservationById(unitId)
+}
+
+// ── Mapping extension ───────────────────────────────────────────────────
+
+private fun ObservationResponse.toEntity(): ObservationEntity? {
+    val unitId = unit?.unitId ?: return null
+    return ObservationEntity(
+        unitId = unitId,
+        taxonId = unit.linkings?.taxon?.id,
+        scientificName = unit.linkings?.taxon?.scientificName,
+        vernacularName = unit.linkings?.taxon?.getVernacularName(),
+        taxonVerbatim = unit.taxonVerbatim,
+        count = unit.count,
+        eventDateBegin = gathering?.eventDate?.begin,
+        eventDateEnd = gathering?.eventDate?.end,
+        municipality = gathering?.municipality,
+        latitude = gathering?.coordinates?.lat,
+        longitude = gathering?.coordinates?.lon,
+        documentId = document?.documentId,
+        sourceId = document?.sourceId
+    )
+}
