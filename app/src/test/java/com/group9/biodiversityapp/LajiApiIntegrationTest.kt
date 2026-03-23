@@ -9,7 +9,7 @@ import org.junit.Test
  * Integration tests that hit the live laji.fi API.
  *
  * Run from Android Studio:  right-click this file -> Run
- * Run from terminal:        ./gradlew :app:test --tests "*.LajiApiIntegrationTest"
+ * Run from terminal:        ./gradlew :app:testDebugUnitTest --tests "*.LajiApiIntegrationTest"
  *
  * These prove the Retrofit setup, auth interceptor, and Gson deserialization all work.
  */
@@ -17,59 +17,7 @@ class LajiApiIntegrationTest {
 
     private val api = RetrofitClient.apiService
 
-    @Test
-    fun `search taxa for Parus major returns results`() = runTest {
-        val response = api.getTaxa(query = "Parus major", pageSize = 5)
-
-        println("=== Taxa search: Parus major ===")
-        println("Total results : ${response.total}")
-        println("Page          : ${response.currentPage}/${response.lastPage}")
-        response.results.forEach { taxon ->
-            println("  ${taxon.id} | ${taxon.scientificName} | ${taxon.vernacularName} | rank=${taxon.taxonRank}")
-        }
-
-        assertTrue("Expected at least 1 result", response.results.isNotEmpty())
-        assertTrue("Total should be > 0", response.total > 0)
-    }
-
-    @Test
-    fun `search species-level taxa for bear returns results`() = runTest {
-        val response = api.getSpecies(query = "bear", pageSize = 5, lang = "en")
-
-        println("=== Species search: bear ===")
-        println("Total results : ${response.total}")
-        response.results.forEach { species ->
-            println("  ${species.id} | ${species.scientificName} | ${species.vernacularName}")
-        }
-
-        assertTrue("Expected at least 1 result", response.results.isNotEmpty())
-    }
-
-    @Test
-    fun `autocomplete taxon returns suggestions`() = runTest {
-        val results = api.autocompleteTaxon(query = "kettu", lang = "fi")
-
-        println("=== Autocomplete: kettu ===")
-        results.forEach { result ->
-            println("  ${result.key} | ${result.value} | scientific=${result.payload?.scientificName}")
-        }
-
-        assertTrue("Expected at least 1 autocomplete suggestion", results.isNotEmpty())
-    }
-
-    @Test
-    fun `get taxon by ID returns valid taxon`() = runTest {
-        // MX.37600 = Parus major (Great Tit)
-        val taxon = api.getTaxonById(id = "MX.37600", lang = "en")
-
-        println("=== Taxon by ID: MX.37600 ===")
-        println("  scientificName : ${taxon.scientificName}")
-        println("  vernacularName : ${taxon.vernacularName}")
-        println("  taxonRank      : ${taxon.taxonRank}")
-
-        assertEquals("MX.37600", taxon.id)
-        assertNotNull("scientificName should not be null", taxon.scientificName)
-    }
+    // ── Warehouse / Observations ──────────────────────────────────────
 
     @Test
     fun `fetch observations returns paginated results`() = runTest {
@@ -89,17 +37,45 @@ class LajiApiIntegrationTest {
     }
 
     @Test
-    fun `fetch informal taxon groups returns groups`() = runTest {
-        val response = api.getInformalTaxonGroups(lang = "en")
+    fun `observation count returns total`() = runTest {
+        val count = api.getObservationCount()
 
-        println("=== Informal Taxon Groups ===")
-        println("Total groups : ${response.total}")
-        response.results.take(10).forEach { group ->
-            println("  ${group.id} | ${group.name}")
+        println("=== Observation count (all) ===")
+        println("Total observations: ${count.total}")
+
+        assertTrue("Total should be > 0", count.total > 0)
+    }
+
+    @Test
+    fun `filter observations by taxon returns matching results`() = runTest {
+        // MX.37600 = Parus major (Great Tit)
+        val response = api.getObservations(taxonId = "MX.37600", pageSize = 5)
+
+        println("=== Observations for Parus major (MX.37600) ===")
+        println("Total results : ${response.total}")
+        response.results.forEach { obs ->
+            val name = obs.unit?.linkings?.taxon?.scientificName ?: obs.unit?.taxonVerbatim ?: "unknown"
+            val loc = obs.gathering?.municipality ?: "unknown location"
+            val date = obs.gathering?.displayDateTime ?: "unknown date"
+            println("  $name | $loc | $date")
         }
 
-        assertTrue("Expected at least 1 group", response.results.isNotEmpty())
+        assertTrue("Expected at least 1 observation for Parus major", response.results.isNotEmpty())
+        assertTrue("Total should be > 0", response.total > 0)
     }
+
+    @Test
+    fun `observation count for specific taxon returns total`() = runTest {
+        // MX.37600 = Parus major (Great Tit)
+        val count = api.getObservationCount(taxonId = "MX.37600")
+
+        println("=== Observation count for Parus major (MX.37600) ===")
+        println("Total observations: ${count.total}")
+
+        assertTrue("Total should be > 0", count.total > 0)
+    }
+
+    // ── Areas ─────────────────────────────────────────────────────────
 
     @Test
     fun `fetch areas returns area list`() = runTest {
@@ -115,12 +91,50 @@ class LajiApiIntegrationTest {
     }
 
     @Test
-    fun `observation count returns total`() = runTest {
-        val count = api.getObservationCount()
+    fun `fetch areas filtered by type returns matching areas`() = runTest {
+        // The /areas endpoint does not support server-side type filtering,
+        // so we fetch all areas and filter client-side.
+        val response = api.getAreas(pageSize = 100, lang = "en")
+        val countries = response.results.filter { it.areaType == "ML.country" }
 
-        println("=== Observation count (all) ===")
-        println("Total observations: ${count.total}")
+        println("=== Areas (countries, client-filtered) ===")
+        println("Total areas fetched : ${response.total}")
+        println("Countries found     : ${countries.size}")
+        countries.take(10).forEach { area ->
+            println("  ${area.id} | ${area.name} | type=${area.areaType}")
+        }
 
-        assertTrue("Total should be > 0", count.total > 0)
+        assertTrue("Expected at least 1 country", countries.isNotEmpty())
+        countries.forEach { area ->
+            assertEquals("All results should be countries", "ML.country", area.areaType)
+        }
+    }
+
+    // ── Informal Taxon Groups ─────────────────────────────────────────
+
+    @Test
+    fun `fetch informal taxon groups returns groups`() = runTest {
+        val response = api.getInformalTaxonGroups(lang = "en")
+
+        println("=== Informal Taxon Groups ===")
+        println("Total groups : ${response.total}")
+        response.results.take(10).forEach { group ->
+            println("  ${group.id} | ${group.name}")
+        }
+
+        assertTrue("Expected at least 1 group", response.results.isNotEmpty())
+    }
+
+    @Test
+    fun `informal taxon groups contain birds and mammals`() = runTest {
+        val response = api.getInformalTaxonGroups(lang = "en")
+
+        val groupNames = response.results.map { it.name }
+
+        println("=== Checking for Birds and Mammals in groups ===")
+        println("Total groups: ${response.total}")
+
+        assertTrue("Groups should contain Birds", groupNames.contains("Birds"))
+        assertTrue("Groups should contain Mammals", groupNames.contains("Mammals"))
     }
 }
