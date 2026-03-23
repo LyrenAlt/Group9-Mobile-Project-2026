@@ -17,17 +17,17 @@ import java.util.concurrent.TimeUnit
 object RetrofitClient {
 
     private const val BASE_URL = "https://api.laji.fi/v0/"
-    private const val ACCESS_TOKEN = "70130609e1838762db9d30dc3b92c1009c36ee40d6167085050742d8701ff77e"
+    private const val ACCESS_TOKEN = "bd0fff7675f38751de58a1d14674567d8f011c964d59084e9cce9dd3095036f8"
 
     /**
      * Interceptor that authenticates every request.
-     * Sends the Bearer header, the accessToken query parameter,
-     * and the API-Version header matching the Swagger spec.
+     * Uses Bearer header (required by taxa/autocomplete endpoints)
+     * and access_token query parameter (required by warehouse endpoints).
      */
     private val authInterceptor = Interceptor { chain ->
         val original = chain.request()
         val url = original.url.newBuilder()
-            .addQueryParameter("accessToken", ACCESS_TOKEN)
+            .addQueryParameter("access_token", ACCESS_TOKEN)
             .build()
         val request = original.newBuilder()
             .url(url)
@@ -46,9 +46,9 @@ object RetrofitClient {
     private val okHttpClient: OkHttpClient = OkHttpClient.Builder()
         .addInterceptor(authInterceptor)
         .addInterceptor(loggingInterceptor)
-        .connectTimeout(30, TimeUnit.SECONDS)
-        .readTimeout(30, TimeUnit.SECONDS)
-        .writeTimeout(30, TimeUnit.SECONDS)
+        .connectTimeout(60, TimeUnit.SECONDS)
+        .readTimeout(60, TimeUnit.SECONDS)
+        .writeTimeout(60, TimeUnit.SECONDS)
         .build()
 
     private val retrofit: Retrofit = Retrofit.Builder()
