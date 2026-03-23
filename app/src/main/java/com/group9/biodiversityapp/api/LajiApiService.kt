@@ -6,7 +6,7 @@ import retrofit2.http.Path
 import retrofit2.http.Query
 
 /**
- * Retrofit service interface for the Finnish Biodiversity Information Facility API.
+ * Retrofit service interface for the Finnish Biodiversity Information Facility API. cool
  * Base URL: https://api.laji.fi/v0/
  *
  * The access_token query parameter is automatically appended by the AuthInterceptor.
