@@ -2,9 +2,9 @@ package com.group9.biodiversityapp.api.model
 
 import com.google.gson.annotations.SerializedName
 
-/**
- * Generic paginated response wrapper used by most laji.fi endpoints.
- */
+// ── Pagination ──────────────────────────────────────────────────────────
+
+/** Generic paginated response wrapper used by most laji.fi endpoints. */
 data class PagedResponse<T>(
     @SerializedName("currentPage") val currentPage: Int,
     @SerializedName("pageSize") val pageSize: Int,
@@ -13,9 +13,9 @@ data class PagedResponse<T>(
     @SerializedName("results") val results: List<T>
 )
 
-/**
- * Taxon / Species response from /v0/taxa and /v0/species endpoints.
- */
+// ── Taxa / Species ──────────────────────────────────────────────────────
+
+/** Taxon response from /taxa and /taxa/{id} endpoints. */
 data class TaxonResponse(
     @SerializedName("id") val id: String,
     @SerializedName("scientificName") val scientificName: String? = null,
@@ -28,20 +28,87 @@ data class TaxonResponse(
     @SerializedName("parent") val parent: String? = null,
     @SerializedName("scientificNameAuthorship") val scientificNameAuthorship: String? = null,
     @SerializedName("hasMultimedia") val hasMultimedia: Boolean? = null,
-    @SerializedName("multimedia") val multimedia: List<MultimediaItem>? = null
-)
+    @SerializedName("multimedia") val multimedia: List<MultimediaItem>? = null,
+    @SerializedName("descriptions") val descriptions: List<DescriptionGroup>? = null,
+    @SerializedName("redListEvaluations") val redListEvaluations: List<RedListEvaluation>? = null,
+    @SerializedName("typeOfOccurrenceInFinland") val typeOfOccurrenceInFinland: String? = null,
+    @SerializedName("habitat") val habitat: List<String>? = null,
+    @SerializedName("primaryHabitat") val primaryHabitat: HabitatInfo? = null,
+    @SerializedName("latestRedListStatusFinland") val latestRedListStatusFinland: RedListStatus? = null,
+    @SerializedName("administrativeStatuses") val administrativeStatuses: List<String>? = null,
+    @SerializedName("taxonSets") val taxonSets: List<String>? = null,
+    @SerializedName("stableString") val stableString: String? = null
+) {
+    /** First image URL (thumbnail) if available — handy for grid views. */
+    val thumbnailUrl: String?
+        get() = multimedia?.firstOrNull()?.let {
+            it.squareThumbnailURL ?: it.thumbnailURL
+        }
+
+    /** First image URL (full size) if available — handy for detail views. */
+    val fullImageUrl: String?
+        get() = multimedia?.firstOrNull()?.fullURL
+}
 
 data class MultimediaItem(
     @SerializedName("thumbnailURL") val thumbnailURL: String? = null,
     @SerializedName("squareThumbnailURL") val squareThumbnailURL: String? = null,
     @SerializedName("fullURL") val fullURL: String? = null,
     @SerializedName("author") val author: String? = null,
-    @SerializedName("licenseId") val licenseId: String? = null
+    @SerializedName("licenseId") val licenseId: String? = null,
+    @SerializedName("mediaType") val mediaType: String? = null,
+    @SerializedName("copyrightOwner") val copyrightOwner: String? = null,
+    @SerializedName("caption") val caption: String? = null
 )
 
-/**
- * Observation/unit response from /v0/warehouse/query/unit/list endpoint.
- */
+data class DescriptionGroup(
+    @SerializedName("title") val title: String? = null,
+    @SerializedName("groups") val groups: List<DescriptionVariable>? = null
+)
+
+data class DescriptionVariable(
+    @SerializedName("variable") val variable: String? = null,
+    @SerializedName("title") val title: String? = null,
+    @SerializedName("content") val content: String? = null
+)
+
+data class RedListEvaluation(
+    @SerializedName("status") val status: String? = null,
+    @SerializedName("year") val year: Int? = null,
+    @SerializedName("criteria") val criteria: String? = null,
+    @SerializedName("threatenedAtArea") val threatenedAtArea: String? = null
+)
+
+data class RedListStatus(
+    @SerializedName("status") val status: String? = null,
+    @SerializedName("year") val year: Int? = null
+)
+
+data class HabitatInfo(
+    @SerializedName("habitat") val habitat: String? = null,
+    @SerializedName("habitatSpecificType") val habitatSpecificType: String? = null
+)
+
+// ── Images ──────────────────────────────────────────────────────────────
+
+/** Image metadata from /images/{id}. */
+data class ImageResponse(
+    @SerializedName("id") val id: String,
+    @SerializedName("fullURL") val fullURL: String? = null,
+    @SerializedName("thumbnailURL") val thumbnailURL: String? = null,
+    @SerializedName("squareThumbnailURL") val squareThumbnailURL: String? = null,
+    @SerializedName("author") val author: String? = null,
+    @SerializedName("licenseId") val licenseId: String? = null,
+    @SerializedName("copyrightOwner") val copyrightOwner: String? = null,
+    @SerializedName("caption") val caption: String? = null,
+    @SerializedName("mediaType") val mediaType: String? = null,
+    @SerializedName("uploadedBy") val uploadedBy: String? = null,
+    @SerializedName("intellectualRights") val intellectualRights: String? = null
+)
+
+// ── Observations / Warehouse ────────────────────────────────────────────
+
+/** Observation/unit response from warehouse endpoints. */
 data class ObservationResponse(
     @SerializedName("unit") val unit: ObservationUnit? = null,
     @SerializedName("gathering") val gathering: ObservationGathering? = null,
@@ -90,10 +157,7 @@ data class ObservationGathering(
     @SerializedName("conversions") val conversions: GatheringConversions? = null,
     @SerializedName("interpretations") val interpretations: GatheringInterpretations? = null
 ) {
-    /** Convenience accessor for municipality from interpretations. */
     val municipality: String? get() = interpretations?.municipalityDisplayname
-
-    /** Convenience accessor for WGS84 coordinates from conversions. */
     val coordinates: Coordinates? get() = conversions?.wgs84CenterPoint
 }
 
@@ -122,25 +186,45 @@ data class ObservationDocument(
     @SerializedName("sourceId") val sourceId: String? = null
 )
 
-/**
- * Count response from /v0/warehouse/query/unit/count.
- */
+/** Count response from warehouse count endpoints. */
 data class CountResponse(
     @SerializedName("total") val total: Long
 )
 
-/**
- * Area response from /v0/areas endpoint.
- */
+/** Aggregate result from warehouse aggregate endpoints. */
+data class AggregateResult(
+    @SerializedName("count") val count: Long? = null,
+    @SerializedName("individualCountSum") val individualCountSum: Long? = null,
+    @SerializedName("aggregateBy") val aggregateBy: Map<String, String>? = null
+)
+
+// ── Areas ────────────────────────────────────────────────────────────────
+
+/** Area from /areas endpoint. */
 data class AreaResponse(
     @SerializedName("id") val id: String,
     @SerializedName("name") val name: String? = null,
     @SerializedName("areaType") val areaType: String? = null
 )
 
-/**
- * Autocomplete result from /v0/autocomplete/taxon.
- */
+// ── Collections ─────────────────────────────────────────────────────────
+
+/** Collection/data source from /collections endpoint. */
+data class CollectionResponse(
+    @SerializedName("id") val id: String,
+    @SerializedName("longName") val longName: String? = null,
+    @SerializedName("abbreviation") val abbreviation: String? = null,
+    @SerializedName("description") val description: String? = null,
+    @SerializedName("collectionType") val collectionType: String? = null,
+    @SerializedName("taxonomicCoverage") val taxonomicCoverage: String? = null,
+    @SerializedName("geographicCoverage") val geographicCoverage: String? = null,
+    @SerializedName("count") val count: Long? = null,
+    @SerializedName("shareToGbif") val shareToGbif: Boolean? = null
+)
+
+// ── Autocomplete ────────────────────────────────────────────────────────
+
+/** Autocomplete result from /autocomplete/taxon. */
 data class AutocompleteResult(
     @SerializedName("key") val key: String,
     @SerializedName("value") val value: String,
@@ -155,11 +239,23 @@ data class AutocompletePayload(
     @SerializedName("cursiveName") val cursiveName: Boolean? = null
 )
 
-/**
- * Informal taxon group from /v0/informal-taxon-groups.
- */
+// ── Informal Taxon Groups ───────────────────────────────────────────────
+
+/** Informal taxon group from /informal-taxon-groups. */
 data class InformalTaxonGroupResponse(
     @SerializedName("id") val id: String,
     @SerializedName("name") val name: String? = null,
     @SerializedName("hasSubGroup") val hasSubGroup: List<String>? = null
+)
+
+// ── News ─────────────────────────────────────────────────────────────────
+
+/** News/announcement from /news. */
+data class NewsResponse(
+    @SerializedName("id") val id: String,
+    @SerializedName("title") val title: String? = null,
+    @SerializedName("content") val content: String? = null,
+    @SerializedName("posted") val posted: String? = null,
+    @SerializedName("tag") val tag: List<String>? = null,
+    @SerializedName("externalURL") val externalURL: String? = null
 )

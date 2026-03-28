@@ -16,8 +16,8 @@ import java.util.concurrent.TimeUnit
  */
 object RetrofitClient {
 
-    private const val BASE_URL = "https://api.laji.fi/v0/"
-    private const val ACCESS_TOKEN = "bd0fff7675f38751de58a1d14674567d8f011c964d59084e9cce9dd3095036f8"
+    private const val BASE_URL = "https://api.laji.fi/"
+    private const val ACCESS_TOKEN = "70130609e1838762db9d30dc3b92c1009c36ee40d6167085050742d8701ff77e"
 
     /**
      * Interceptor that authenticates every request.
@@ -43,7 +43,8 @@ object RetrofitClient {
         level = HttpLoggingInterceptor.Level.BODY
     }
 
-    private val okHttpClient: OkHttpClient = OkHttpClient.Builder()
+    /** Authenticated OkHttp client — also used by Coil for loading images. */
+    val okHttpClient: OkHttpClient = OkHttpClient.Builder()
         .addInterceptor(authInterceptor)
         .addInterceptor(loggingInterceptor)
         .connectTimeout(60, TimeUnit.SECONDS)
