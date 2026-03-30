@@ -104,6 +104,8 @@ class TaxonRepository(
 
     fun getFavoriteTaxa(): Flow<List<FavoriteTaxonEntity>> = favoriteDao.getAllFavoriteTaxa()
 
+    fun getFavoriteTaxaCount(): Flow<Int> = favoriteDao.getFavoriteTaxaCount()
+
     fun isFavorite(taxonId: String): Flow<Boolean> = favoriteDao.isTaxonFavorite(taxonId)
 
     suspend fun toggleFavorite(taxon: TaxonResponse) {

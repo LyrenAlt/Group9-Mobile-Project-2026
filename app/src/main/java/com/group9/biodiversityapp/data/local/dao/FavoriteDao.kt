@@ -32,6 +32,9 @@ interface FavoriteDao {
     @Query("SELECT EXISTS(SELECT 1 FROM favorite_taxa WHERE taxonId = :taxonId)")
     suspend fun isTaxonFavoriteSync(taxonId: String): Boolean
 
+    @Query("SELECT COUNT(*) FROM favorite_taxa")
+    fun getFavoriteTaxaCount(): Flow<Int>
+
     // ── Favorite Observations ───────────────────────────────────────────
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
