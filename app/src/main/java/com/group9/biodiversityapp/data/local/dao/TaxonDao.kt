@@ -22,6 +22,9 @@ interface TaxonDao {
     @Query("SELECT * FROM cached_taxa ORDER BY cachedAt DESC")
     fun getAll(): Flow<List<TaxonEntity>>
 
+    @Query("SELECT * FROM cached_taxa ORDER BY cachedAt DESC")
+    suspend fun getAllSync(): List<TaxonEntity>
+
     @Query(
         "SELECT * FROM cached_taxa WHERE " +
         "scientificName LIKE '%' || :query || '%' OR " +

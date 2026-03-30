@@ -1,6 +1,7 @@
 package com.group9.biodiversityapp.data.repository
 
 import com.group9.biodiversityapp.api.LajiApiService
+import com.group9.biodiversityapp.api.model.AggregateResult
 import com.group9.biodiversityapp.api.model.AreaResponse
 import com.group9.biodiversityapp.api.model.CountResponse
 import com.group9.biodiversityapp.api.model.ObservationResponse
@@ -17,6 +18,20 @@ import kotlinx.coroutines.flow.Flow
  * - Network calls go through [apiService].
  * - Cached data is read/written through [observationDao].
  * - Favorites are managed through [favoriteDao].
+ *
+ * Usage from ViewModel:
+ *
+ *   val app = application as BiodiversityApp
+ *   val repo = app.observationRepository
+ *
+ *   // US-29: Recent observations for a species
+ *   val recent = repo.fetchRecentObservations("MX.37600")
+ *
+ *   // US-32: Total observation count for a species
+ *   val count = repo.fetchObservationCount(taxonId = "MX.37600")
+ *
+ *   // US-34: Most observed species
+ *   val top = repo.fetchMostObservedSpecies()
  */
 class ObservationRepository(
     private val apiService: LajiApiService,
@@ -49,7 +64,30 @@ class ObservationRepository(
         return response
     }
 
-    /** Get the count of observations matching the given filters. */
+    /**
+     * US-29: Fetch the most recent observations of a specific species.
+     * Sorted by date descending. Results are cached locally.
+     */
+    suspend fun fetchRecentObservations(
+        taxonId: String,
+        page: Int = 1,
+        pageSize: Int = 25
+    ): PagedResponse<ObservationResponse> {
+        val response = apiService.getObservations(
+            page = page,
+            pageSize = pageSize,
+            taxonId = taxonId,
+            orderBy = "gathering.eventDate.begin DESC"
+        )
+        val entities = response.results.mapNotNull { it.toEntity() }
+        observationDao.insertAll(entities)
+        return response
+    }
+
+    /**
+     * US-32: Get the total observation count for a species (or all species).
+     * Pass taxonId to filter, or null for the global total.
+     */
     suspend fun fetchObservationCount(
         taxonId: String? = null,
         time: String? = null,
@@ -61,6 +99,32 @@ class ObservationRepository(
             time = time,
             area = area,
             target = target
+        )
+    }
+
+    /**
+     * US-34: Get the most observed species using the warehouse aggregate endpoint.
+     * Returns species ranked by observation count.
+     *
+     * Each result has:
+     * - aggregateBy["unit.linkings.taxon.id"] = taxon ID
+     * - aggregateBy["unit.linkings.taxon.scientificName"] = scientific name
+     * - count = number of observations
+     * - individualCountSum = total individuals
+     */
+    suspend fun fetchMostObservedSpecies(
+        page: Int = 1,
+        pageSize: Int = 10,
+        time: String? = null,
+        area: String? = null
+    ): PagedResponse<AggregateResult> {
+        return apiService.getObservationAggregate(
+            aggregateBy = "unit.linkings.taxon.speciesId,unit.linkings.taxon.speciesScientificName",
+            page = page,
+            pageSize = pageSize,
+            taxonId = null,
+            time = time,
+            area = area
         )
     }
 

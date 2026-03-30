@@ -5,22 +5,24 @@ import coil.ImageLoader
 import coil.ImageLoaderFactory
 import com.group9.biodiversityapp.api.RetrofitClient
 import com.group9.biodiversityapp.data.local.BiodiversityDatabase
+import com.group9.biodiversityapp.data.local.LanguagePreference
+import com.group9.biodiversityapp.data.repository.AuthRepository
 import com.group9.biodiversityapp.data.repository.ObservationRepository
 import com.group9.biodiversityapp.data.repository.TaxonRepository
 
 /**
  * Application class — the single source of truth for shared dependencies.
  *
- * ViewModels access repositories like this:
+ * Access from a ViewModel:
  *
  *   val app = application as BiodiversityApp
  *   val taxonRepo = app.taxonRepository
  *   val observationRepo = app.observationRepository
+ *   val auth = app.authRepository
  *
- * Or from a Composable using LocalContext:
+ * Access from a Composable:
  *
  *   val app = LocalContext.current.applicationContext as BiodiversityApp
- *   val taxonRepo = app.taxonRepository
  */
 class BiodiversityApp : Application(), ImageLoaderFactory {
 
@@ -29,7 +31,7 @@ class BiodiversityApp : Application(), ImageLoaderFactory {
         BiodiversityDatabase.getInstance(this)
     }
 
-    /** Repository for taxa, species, autocomplete, and favorites. */
+    /** Taxa, species, autocomplete, and favorites. */
     val taxonRepository: TaxonRepository by lazy {
         TaxonRepository(
             apiService = RetrofitClient.apiService,
@@ -38,13 +40,23 @@ class BiodiversityApp : Application(), ImageLoaderFactory {
         )
     }
 
-    /** Repository for observations, areas, and observation favorites. */
+    /** Observations, areas, and observation favorites. */
     val observationRepository: ObservationRepository by lazy {
         ObservationRepository(
             apiService = RetrofitClient.apiService,
             observationDao = database.observationDao(),
             favoriteDao = database.favoriteDao()
         )
+    }
+
+    /** User registration, login, and password reset. */
+    val authRepository: AuthRepository by lazy {
+        AuthRepository(userDao = database.userDao())
+    }
+
+    /** US-42: Language preference — "en" or "fi". Persists across app restarts. */
+    val languagePreference: LanguagePreference by lazy {
+        LanguagePreference(this)
     }
 
     override fun newImageLoader(): ImageLoader {
