@@ -25,13 +25,15 @@ data class TaxonResponse(
     @SerializedName("finnish") val finnish: Boolean? = null,
     @SerializedName("species") val species: Boolean? = null,
     @SerializedName("informalTaxonGroups") val informalTaxonGroups: List<String>? = null,
-    @SerializedName("parent") val parent: String? = null,
+//    @SerializedName("parent") val parent: String? = null,
+    @SerializedName("parent") val parent: ParentTaxon? = null,
     @SerializedName("scientificNameAuthorship") val scientificNameAuthorship: String? = null,
     @SerializedName("hasMultimedia") val hasMultimedia: Boolean? = null,
     @SerializedName("multimedia") val multimedia: List<MultimediaItem>? = null,
     @SerializedName("descriptions") val descriptions: List<DescriptionGroup>? = null,
     @SerializedName("redListEvaluations") val redListEvaluations: List<RedListEvaluation>? = null,
-    @SerializedName("typeOfOccurrenceInFinland") val typeOfOccurrenceInFinland: String? = null,
+//    @SerializedName("typeOfOccurrenceInFinland") val typeOfOccurrenceInFinland: String? = null,
+    @SerializedName("typeOfOccurrenceInFinland") val typeOfOccurrenceInFinland: List<String>? = null,
     @SerializedName("habitat") val habitat: List<String>? = null,
     @SerializedName("primaryHabitat") val primaryHabitat: HabitatInfo? = null,
     @SerializedName("latestRedListStatusFinland") val latestRedListStatusFinland: RedListStatus? = null,
@@ -50,6 +52,12 @@ data class TaxonResponse(
         get() = multimedia?.firstOrNull()?.fullURL
 }
 
+data class ParentTaxon(
+    @SerializedName("id") val id: String? = null,
+    @SerializedName("scientificName") val scientificName: String? = null,
+    @SerializedName("vernacularName") val vernacularName: String? = null,
+    @SerializedName("taxonRank") val taxonRank: String? = null
+)
 data class MultimediaItem(
     @SerializedName("thumbnailURL") val thumbnailURL: String? = null,
     @SerializedName("squareThumbnailURL") val squareThumbnailURL: String? = null,

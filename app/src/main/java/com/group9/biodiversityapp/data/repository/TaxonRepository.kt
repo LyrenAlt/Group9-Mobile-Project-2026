@@ -10,6 +10,7 @@ import com.group9.biodiversityapp.data.local.dao.TaxonDao
 import com.group9.biodiversityapp.data.local.entity.FavoriteTaxonEntity
 import com.group9.biodiversityapp.data.local.entity.TaxonEntity
 import kotlinx.coroutines.flow.Flow
+import com.group9.biodiversityapp.api.model.ParentTaxon
 
 /**
  * Repository that mediates between the laji.fi Taxa API and the local Room cache.
@@ -216,7 +217,7 @@ private fun TaxonResponse.toEntity() = TaxonEntity(
     taxonRank = taxonRank,
     finnish = finnish,
     informalTaxonGroups = informalTaxonGroups,
-    parentId = parent,
+    parentId = parent?.id,
     scientificNameAuthorship = scientificNameAuthorship,
     thumbnailUrl = multimedia?.firstOrNull()?.squareThumbnailURL
 )
@@ -229,7 +230,9 @@ private fun TaxonEntity.toResponse() = TaxonResponse(
     taxonRank = taxonRank,
     finnish = finnish,
     informalTaxonGroups = informalTaxonGroups,
-    parent = parentId,
+    parent = parentId?.let {
+        ParentTaxon(id = it)
+    },
     scientificNameAuthorship = scientificNameAuthorship,
     multimedia = thumbnailUrl?.let {
         listOf(com.group9.biodiversityapp.api.model.MultimediaItem(squareThumbnailURL = it))

@@ -182,8 +182,11 @@ private fun TaxonDetail(taxon: TaxonResponse) {
                 taxon.taxonRank?.let { rank ->
                     InfoRow(label = "Rank", value = rank.removePrefix("MX."))
                 }
-                taxon.parent?.let {
-                    InfoRow(label = "Parent Taxon", value = it)
+                taxon.parent?.let { parent ->
+                    InfoRow(
+                        label = "Parent Taxon",
+                        value = parent.vernacularName ?: parent.scientificName ?: parent.id ?: "Unknown"
+                    )
                 }
                 taxon.informalTaxonGroups?.let { groups ->
                     if (groups.isNotEmpty()) {
