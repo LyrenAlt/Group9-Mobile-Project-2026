@@ -57,14 +57,14 @@ class TaxonRepository(
         page: Int = 1,
         pageSize: Int = 25,
         query: String? = null,
-        informalTaxonGroup: String? = null,
+        informalTaxonGroups: String? = null,
         lang: String = "en"
     ): PagedResponse<TaxonResponse> {
         val response = apiService.getTaxa(
             page = page,
             pageSize = pageSize,
             query = query,
-            informalTaxonGroup = informalTaxonGroup,
+            informalTaxonGroups = informalTaxonGroups,
             lang = lang
         )
         // US-41: Cache results
@@ -78,14 +78,14 @@ class TaxonRepository(
         page: Int = 1,
         pageSize: Int = 25,
         query: String? = null,
-        informalTaxonGroup: String? = null,
+        informalTaxonGroups: String? = null,
         lang: String = "en"
     ): PagedResponse<TaxonResponse> {
         val response = apiService.getSpecies(
             page = page,
             pageSize = pageSize,
             query = query,
-            informalTaxonGroup = informalTaxonGroup,
+            informalTaxonGroups = informalTaxonGroups,
             lang = lang
         )
         // US-41: Cache results
@@ -122,11 +122,11 @@ class TaxonRepository(
         page: Int = 1,
         pageSize: Int = 25,
         query: String? = null,
-        informalTaxonGroup: String? = null,
+        informalTaxonGroups: String? = null,
         lang: String = "en"
     ): List<TaxonResponse> {
         return try {
-            fetchSpecies(page, pageSize, query, informalTaxonGroup, lang).results
+            fetchSpecies(page, pageSize, query, informalTaxonGroups, lang).results
         } catch (e: Exception) {
             // Offline — return cached data
             val cached = taxonDao.getAllSync()

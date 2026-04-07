@@ -25,6 +25,9 @@ import coil.compose.SubcomposeAsyncImage
 import coil.request.ImageRequest
 import com.group9.biodiversityapp.api.model.TaxonResponse
 import com.group9.biodiversityapp.ui.viewmodel.BrowseViewModel
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import android.app.Application
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -33,11 +36,22 @@ fun BrowseScreen(
     groupName: String? = null,
     onNavigateToDetail: (taxonId: String) -> Unit,
     onNavigateBack: () -> Unit,
-    viewModel: BrowseViewModel = viewModel()
+//    viewModel: BrowseViewModel = viewModel()
+
 ) {
+    val context = LocalContext.current
+
+    val viewModel: BrowseViewModel = viewModel(
+        factory = object : ViewModelProvider.Factory {
+            override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                return BrowseViewModel(context.applicationContext as Application) as T
+            }
+        }
+    )
+
     val state by viewModel.uiState.collectAsState()
     val gridState = rememberLazyGridState()
-    var searchQuery by remember { mutableStateOf("") }
+//    var searchQuery by remember { mutableStateOf("") }
     var showSearch by remember { mutableStateOf(false) }
 
     LaunchedEffect(groupId) {
@@ -59,9 +73,8 @@ fun BrowseScreen(
                 title = {
                     if (showSearch) {
                         OutlinedTextField(
-                            value = searchQuery,
+                            value = state.searchQuery,
                             onValueChange = {
-                                searchQuery = it
                                 viewModel.searchInGroup(it)
                             },
                             placeholder = { Text("Search in ${groupName ?: "All Species"}...") },
