@@ -20,7 +20,8 @@ data class BrowseUiState(
     val hasMorePages: Boolean = true,
     val groupId: String? = null,
     val groupName: String? = null,
-    val searchQuery: String = ""
+    val searchQuery: String = "",
+    val nextApiPage: Int = 1
 )
 class BrowseViewModel(application: Application) : AndroidViewModel(application) {
 //class BrowseViewModel : ViewModel() {
@@ -43,17 +44,19 @@ private val repository = (application as BiodiversityApp).taxonRepository
         viewModelScope.launch {
             try {
 //                val response = api.getSpecies(
-                val response = repository.fetchSpecies(
-                    page = 1,
+                val response = repository.fetchSpeciesPage(
+                    startApiPage = 1,
                     pageSize = 25,
                     informalTaxonGroups = groupId,
                     lang = "en"
                 )
+
                 _uiState.value = _uiState.value.copy(
                     species = response.results,
                     isLoading = false,
                     currentPage = 1,
-                    hasMorePages = response.currentPage < response.lastPage
+                    hasMorePages = response.hasMorePages,
+                    nextApiPage = response.nextApiPage
                 )
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
@@ -72,18 +75,19 @@ private val repository = (application as BiodiversityApp).taxonRepository
 
         viewModelScope.launch {
             try {
-                val nextPage = state.currentPage + 1
-                val response = repository.fetchSpecies(
-                    page = nextPage,
+                val response = repository.fetchSpeciesPage(
+                    startApiPage = state.nextApiPage,
                     pageSize = 25,
                     informalTaxonGroups = state.groupId,
                     lang = "en"
                 )
+
                 _uiState.value = _uiState.value.copy(
                     species = state.species + response.results,
                     isLoadingMore = false,
-                    currentPage = nextPage,
-                    hasMorePages = nextPage < response.lastPage
+                    currentPage = state.currentPage + 1,
+                    hasMorePages = response.hasMorePages,
+                    nextApiPage = response.nextApiPage
                 )
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
@@ -99,18 +103,20 @@ private val repository = (application as BiodiversityApp).taxonRepository
 
         viewModelScope.launch {
             try {
-                val response = repository.fetchSpecies(
-                    page = 1,
+                val response = repository.fetchSpeciesPage(
+                    startApiPage = 1,
                     pageSize = 25,
                     query = query.ifBlank { null },
                     informalTaxonGroups = _uiState.value.groupId,
                     lang = "en"
                 )
+
                 _uiState.value = _uiState.value.copy(
                     species = response.results,
                     isLoading = false,
                     currentPage = 1,
-                    hasMorePages = response.currentPage < response.lastPage
+                    hasMorePages = response.hasMorePages,
+                    nextApiPage = response.nextApiPage
                 )
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(

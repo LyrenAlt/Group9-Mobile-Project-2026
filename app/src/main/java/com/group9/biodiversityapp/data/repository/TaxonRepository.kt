@@ -11,6 +11,7 @@ import com.group9.biodiversityapp.data.local.entity.FavoriteTaxonEntity
 import com.group9.biodiversityapp.data.local.entity.TaxonEntity
 import kotlinx.coroutines.flow.Flow
 import com.group9.biodiversityapp.api.model.ParentTaxon
+import com.group9.biodiversityapp.api.model.SpeciesPageResult
 
 /**
  * Repository that mediates between the laji.fi Taxa API and the local Room cache.
@@ -73,27 +74,49 @@ class TaxonRepository(
         return response
     }
 
-    /** Fetch Finnish species from the API and cache them locally. */
-    suspend fun fetchSpecies(
-        page: Int = 1,
+    /** Fetch species from the API, keep only real species, and fill the page if filtering removes too many items. */
+    /** Fetch species from the API, keep only real species, and fill the page if filtering removes too many items. */
+    suspend fun fetchSpeciesPage(
+        startApiPage: Int = 1,
         pageSize: Int = 25,
         query: String? = null,
         informalTaxonGroups: String? = null,
         lang: String = "en"
-    ): PagedResponse<TaxonResponse> {
-        val response = apiService.getSpecies(
-            page = page,
-            pageSize = pageSize,
-            query = query,
-            informalTaxonGroups = informalTaxonGroups,
-            lang = lang
-        )
-        // US-41: Cache results
-        val entities = response.results.map { it.toEntity() }
-        taxonDao.insertAll(entities)
-        return response
-    }
+    ): SpeciesPageResult {
 
+        val collectedSpecies = mutableListOf<TaxonResponse>()
+        var apiPage = startApiPage
+        var hasMorePages = true
+
+        while (collectedSpecies.size < pageSize && hasMorePages) {
+            val response = apiService.getSpecies(
+                page = apiPage,
+                pageSize = pageSize,
+                query = query,
+                informalTaxonGroups = informalTaxonGroups,
+                lang = lang
+            )
+
+            val filteredResults = response.results.filter {
+                it.taxonRank == "MX.species"
+            }
+
+            collectedSpecies += filteredResults
+            hasMorePages = response.currentPage < response.lastPage
+            apiPage++
+        }
+
+        val finalResults = collectedSpecies.take(pageSize)
+
+        val entities = finalResults.map { it.toEntity() }
+        taxonDao.insertAll(entities)
+
+        return SpeciesPageResult(
+            results = finalResults,
+            nextApiPage = apiPage,
+            hasMorePages = hasMorePages
+        )
+    }
     /** Fetch a single taxon by ID from the API and cache it. */
     suspend fun fetchTaxonById(id: String, lang: String = "en"): TaxonResponse {
         val response = apiService.getTaxonById(id = id, lang = lang)
@@ -126,9 +149,14 @@ class TaxonRepository(
         lang: String = "en"
     ): List<TaxonResponse> {
         return try {
-            fetchSpecies(page, pageSize, query, informalTaxonGroups, lang).results
+            fetchSpeciesPage(
+                startApiPage = page,
+                pageSize = pageSize,
+                query = query,
+                informalTaxonGroups = informalTaxonGroups,
+                lang = lang
+            ).results
         } catch (e: Exception) {
-            // Offline — return cached data
             val cached = taxonDao.getAllSync()
             cached.map { it.toResponse() }
         }
