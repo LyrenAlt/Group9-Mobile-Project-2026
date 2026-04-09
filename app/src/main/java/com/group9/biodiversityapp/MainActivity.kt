@@ -19,6 +19,9 @@ import com.group9.biodiversityapp.ui.screens.SearchScreen
 import com.group9.biodiversityapp.ui.theme.BiodiversityAppTheme
 import java.net.URLDecoder
 import java.net.URLEncoder
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.group9.biodiversityapp.ui.viewmodel.DetailViewModel
+import com.group9.biodiversityapp.ui.viewmodel.DetailViewModelFactory
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -89,9 +92,14 @@ class MainActivity : ComponentActivity() {
                             )
                         ) { backStackEntry ->
                             val taxonId = backStackEntry.arguments?.getString("taxonId") ?: return@composable
+                            val app = application as BiodiversityApp
+                            val factory = DetailViewModelFactory(app.taxonRepository)
+                            val detailViewModel: DetailViewModel = viewModel(factory = factory)
+
                             DetailScreen(
                                 taxonId = taxonId,
-                                onNavigateBack = { navController.popBackStack() }
+                                onNavigateBack = { navController.popBackStack() },
+                                viewModel = detailViewModel
                             )
                         }
                     }

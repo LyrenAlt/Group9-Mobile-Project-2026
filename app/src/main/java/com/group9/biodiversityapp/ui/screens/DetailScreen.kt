@@ -27,7 +27,7 @@ import com.group9.biodiversityapp.ui.viewmodel.DetailViewModel
 fun DetailScreen(
     taxonId: String,
     onNavigateBack: () -> Unit,
-    viewModel: DetailViewModel = viewModel()
+    viewModel: DetailViewModel
 ) {
     val state by viewModel.uiState.collectAsState()
 
