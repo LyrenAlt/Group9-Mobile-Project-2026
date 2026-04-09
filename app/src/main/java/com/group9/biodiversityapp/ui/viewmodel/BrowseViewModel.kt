@@ -1,13 +1,15 @@
 package com.group9.biodiversityapp.ui.viewmodel
 
-import androidx.lifecycle.ViewModel
+
 import androidx.lifecycle.viewModelScope
-import com.group9.biodiversityapp.api.RetrofitClient
 import com.group9.biodiversityapp.api.model.TaxonResponse
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
+import com.group9.biodiversityapp.BiodiversityApp
 
 data class BrowseUiState(
     val species: List<TaxonResponse> = emptyList(),
@@ -18,19 +20,20 @@ data class BrowseUiState(
     val hasMorePages: Boolean = true,
     val groupId: String? = null,
     val groupName: String? = null,
-    val searchQuery: String = ""
+    val searchQuery: String = "",
+    val nextApiPage: Int = 1
 )
+class BrowseViewModel(application: Application) : AndroidViewModel(application) {
+//class BrowseViewModel : ViewModel() {
 
-class BrowseViewModel : ViewModel() {
-
-    private val api = RetrofitClient.apiService
-
+//    private val api = RetrofitClient.apiService
+private val repository = (application as BiodiversityApp).taxonRepository
     private val _uiState = MutableStateFlow(BrowseUiState())
     val uiState: StateFlow<BrowseUiState> = _uiState.asStateFlow()
 
     fun loadSpecies(groupId: String? = null, groupName: String? = null) {
         // Avoid reloading if already loaded for this group
-        if (_uiState.value.groupId == groupId && _uiState.value.species.isNotEmpty()) return
+//        if (_uiState.value.groupId == groupId && _uiState.value.species.isNotEmpty()) return
 
         _uiState.value = BrowseUiState(
             isLoading = true,
@@ -40,17 +43,20 @@ class BrowseViewModel : ViewModel() {
 
         viewModelScope.launch {
             try {
-                val response = api.getSpecies(
-                    page = 1,
+//                val response = api.getSpecies(
+                val response = repository.fetchSpeciesPage(
+                    startApiPage = 1,
                     pageSize = 25,
-                    informalTaxonGroup = groupId,
+                    informalTaxonGroups = groupId,
                     lang = "en"
                 )
+
                 _uiState.value = _uiState.value.copy(
                     species = response.results,
                     isLoading = false,
                     currentPage = 1,
-                    hasMorePages = response.currentPage < response.lastPage
+                    hasMorePages = response.hasMorePages,
+                    nextApiPage = response.nextApiPage
                 )
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
@@ -69,18 +75,19 @@ class BrowseViewModel : ViewModel() {
 
         viewModelScope.launch {
             try {
-                val nextPage = state.currentPage + 1
-                val response = api.getSpecies(
-                    page = nextPage,
+                val response = repository.fetchSpeciesPage(
+                    startApiPage = state.nextApiPage,
                     pageSize = 25,
-                    informalTaxonGroup = state.groupId,
+                    informalTaxonGroups = state.groupId,
                     lang = "en"
                 )
+
                 _uiState.value = _uiState.value.copy(
                     species = state.species + response.results,
                     isLoadingMore = false,
-                    currentPage = nextPage,
-                    hasMorePages = nextPage < response.lastPage
+                    currentPage = state.currentPage + 1,
+                    hasMorePages = response.hasMorePages,
+                    nextApiPage = response.nextApiPage
                 )
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
@@ -96,18 +103,20 @@ class BrowseViewModel : ViewModel() {
 
         viewModelScope.launch {
             try {
-                val response = api.getSpecies(
-                    page = 1,
+                val response = repository.fetchSpeciesPage(
+                    startApiPage = 1,
                     pageSize = 25,
                     query = query.ifBlank { null },
-                    informalTaxonGroup = _uiState.value.groupId,
+                    informalTaxonGroups = _uiState.value.groupId,
                     lang = "en"
                 )
+
                 _uiState.value = _uiState.value.copy(
                     species = response.results,
                     isLoading = false,
                     currentPage = 1,
-                    hasMorePages = response.currentPage < response.lastPage
+                    hasMorePages = response.hasMorePages,
+                    nextApiPage = response.nextApiPage
                 )
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
